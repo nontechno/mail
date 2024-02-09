@@ -1,12 +1,17 @@
+// Copyright 2024 The NonTechno Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package mail
 
 import (
 	"encoding/json"
-	"github.com/nontechno/later"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/smtp"
 	"strings"
+
+	"github.com/nontechno/later"
+	log "github.com/sirupsen/logrus"
 )
 
 type EmailConfig struct {
@@ -18,6 +23,10 @@ type EmailConfig struct {
 	From     string `json:"from"`
 	Subject  string `json:"subject"`
 }
+
+const (
+	Separator = "\u0000"
+)
 
 func (ec EmailConfig) Address() string {
 	return ec.SMTP + ":" + ec.Port
@@ -47,9 +56,15 @@ func SendEmail(to []string, txt string) {
 		message = txt
 	}
 
+	subject := emailConfig.Subject
+	if pos := strings.Index(message, Separator); pos > 0 {
+		subject = message[:pos]
+		message = message[pos+len(Separator):]
+	}
+
 	msg := []byte("To:" + strings.Join(to, ";") +
 		"\r\nFrom: " + emailConfig.From +
-		"\r\nSubject: " + emailConfig.Subject +
+		"\r\nSubject: " + subject +
 		"\r\nContent-Type: text/plain\r\n\r\n" +
 		message)
 
@@ -68,5 +83,5 @@ func SendEmail(to []string, txt string) {
 
 func init() {
 	later.Register(SendEmail, "send.mail")
-	later.Link(&getLog, "get.log")
+	later.Link(&getLog, "get.log", nil)
 }
